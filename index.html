@@ -100,9 +100,14 @@
 @media(max-width:540px){#nw-digitalwood .dw-brand img.dw-logo{width:112px;max-height:38px}#nw-digitalwood .dw-brand small{font-size:8px;letter-spacing:.06em}}
 </style>
 <style>
-html.dw-embedded, html.dw-embedded body { margin:0 !important; padding:0 !important; }
-html.dw-embedded .dw-nav, html.dw-embedded .dw-footer { display:none !important; }
-html.dw-embedded #nw-digitalwood { margin:0; }
+/* GitHub Pages inside Sixshop: no nested scrolling, no duplicate headers */
+html.dw-embedded{scroll-behavior:auto!important;overflow:hidden!important;scroll-padding:0!important}
+html.dw-embedded body{margin:0!important;padding:0!important;overflow:hidden!important}
+html.dw-embedded .dw-nav,html.dw-embedded .dw-footer{display:none!important}
+html.dw-embedded #nw-digitalwood{margin:0!important;overflow:visible!important}
+html.dw-embedded #nw-digitalwood .dw-hero{margin:0!important;min-height:720px!important}
+html.dw-embedded #nw-digitalwood .dw-hero>.dw-wrap:not(.dw-hero-foot){padding-top:140px!important;padding-bottom:135px!important}
+@media(max-width:540px){html.dw-embedded #nw-digitalwood .dw-hero>.dw-wrap:not(.dw-hero-foot){padding-top:115px!important;padding-bottom:85px!important}}
 </style>
 </head><body><div id="nw-digitalwood">
 <nav aria-label="디지털 목공 교육 메뉴" class="dw-nav"><div class="dw-wrap"><a class="dw-brand" href="https://nextwood.co.kr/" aria-label="NEXTWOOD 공식 홈페이지"><img class="dw-logo" src="https://i.imgur.com/UDxe4HF.png" alt="NEXTWOOD" loading="eager" decoding="async"/><small>DIGITAL WOOD<br/>EDUCATION</small></a><div class="dw-menu"><a href="#dw-courses">교육 과정</a><a href="#dw-calendar">교육 일정</a><a href="#dw-about">교육 안내</a><a class="dw-button" href="https://forms.monday.com/forms/4dfbf32eab5d0bf38e0f4b38284c659e?r=use1" rel="noopener noreferrer" target="_blank">교육 신청 ↗</a></div></div></nav>
@@ -119,36 +124,56 @@ html.dw-embedded #nw-digitalwood { margin:0; }
 <div class="dw-mobile-cta"><a class="dw-button" href="https://forms.monday.com/forms/4dfbf32eab5d0bf38e0f4b38284c659e?r=use1" target="_blank" rel="noopener noreferrer">교육 신청하기 ↗</a></div>
 </div>
 <script>
-(function () {
+/* Embedded navigation and resizing: coordinate scroll with the Sixshop parent page. */
+(function(){
   'use strict';
-  var embedded = new URLSearchParams(window.location.search).get('embed') === '1';
-  if (!embedded) return;
+  if(new URLSearchParams(location.search).get('embed')!=='1')return;
   document.documentElement.classList.add('dw-embedded');
-
-  function reportHeight() {
-    var app = document.getElementById('nw-digitalwood');
-    if (!app || window.parent === window) return;
-    var height = Math.ceil(app.getBoundingClientRect().height);
-    if (height > 0) {
-      window.parent.postMessage({
-        type: 'NEXTWOOD_DIGITALWOOD_HEIGHT',
-        height: height
-      }, 'https://nextwood.co.kr');
-      window.parent.postMessage({
-        type: 'NEXTWOOD_DIGITALWOOD_HEIGHT',
-        height: height
-      }, 'https://www.nextwood.co.kr');
-    }
+  const MSG='NEXTWOOD_DIGITALWOOD_';
+  const origins=['https://nextwood.co.kr','https://www.nextwood.co.kr'];
+  function send(type,details){
+    if(window.parent===window)return;
+    origins.forEach(origin=>window.parent.postMessage({type:MSG+type,...details},origin));
   }
-  window.addEventListener('load', reportHeight);
-  window.addEventListener('resize', reportHeight);
-  document.addEventListener('DOMContentLoaded', function () {
-    reportHeight();
-    if ('ResizeObserver' in window) {
-      var app = document.getElementById('nw-digitalwood');
-      if (app) new ResizeObserver(reportHeight).observe(app);
-    }
+  function contentHeight(){
+    const el=document.getElementById('nw-digitalwood');
+    if(!el)return 0;
+    return Math.ceil(el.getBoundingClientRect().height);
+  }
+  let previousHeight=0;
+  function reportHeight(){
+    const h=contentHeight();
+    if(h>=100&&h!==previousHeight){previousHeight=h;send('HEIGHT',{height:h});}
+  }
+  function gotoSection(selector){
+    const target=document.querySelector(selector);
+    if(!target)return;
+    const root=document.getElementById('nw-digitalwood');
+    if(!root)return;
+    const top=target.getBoundingClientRect().top-root.getBoundingClientRect().top;
+    send('SCROLL',{top:Math.max(0,Math.round(top)),smooth:!matchMedia('(prefers-reduced-motion: reduce)').matches});
+  }
+  document.addEventListener('click',function(event){
+    const anchor=event.target.closest('a[href^="#"]');
+    if(!anchor)return;
+    const hash=anchor.getAttribute('href');
+    if(!/^#[A-Za-z][\w-]*$/.test(hash)||!document.getElementById(hash.slice(1)))return;
+    event.preventDefault();
+    gotoSection(hash);
   });
+  document.addEventListener('DOMContentLoaded',function(){
+    // A nested iframe must not keep a separate scroll position.
+    window.scrollTo(0,0);
+    reportHeight();
+    if('ResizeObserver'in window){
+      const el=document.getElementById('nw-digitalwood');
+      if(el)new ResizeObserver(reportHeight).observe(el);
+    }
+    document.querySelectorAll('img').forEach(img=>img.addEventListener('load',reportHeight,{once:true}));
+    setTimeout(reportHeight,250);
+  });
+  window.addEventListener('load',function(){window.scrollTo(0,0);reportHeight();});
+  window.addEventListener('resize',reportHeight);
 })();
 </script>
 </body></html>
